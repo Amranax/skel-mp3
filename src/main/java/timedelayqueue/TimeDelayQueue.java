@@ -1,8 +1,7 @@
 package timedelayqueue;
 
-import java.util.Comparator;
-import java.util.PriorityQueue;
-import java.util.UUID;
+import java.security.Timestamp;
+import java.util.*;
 
 // TODO: write a description for this class
 // TODO: complete all methods, irrespective of whether there is an explicit TODO or not
@@ -10,6 +9,17 @@ import java.util.UUID;
 // TODO: State the rep invariant and abstraction function
 // TODO: what is the thread safety argument?
 public class TimeDelayQueue {
+    /* RI
+       AF
+     */
+
+    private final int delay;
+
+    private Queue<TimestampedObject> queue;
+
+    private List<Timestamp> history;
+
+    private long totalMsgCount;
 
     // a comparator to sort messages
     private class PubSubMessageComparator implements Comparator<PubSubMessage> {
@@ -23,6 +33,10 @@ public class TimeDelayQueue {
      * @param delay the delay, in milliseconds, that the queue can tolerate, >= 0
      */
     public TimeDelayQueue(int delay) {
+        this.delay = delay;
+        queue = new PriorityQueue<>();
+        history = new ArrayList<>();
+        totalMsgCount = 0L;
     }
 
     // add a message to the TimeDelayQueue
