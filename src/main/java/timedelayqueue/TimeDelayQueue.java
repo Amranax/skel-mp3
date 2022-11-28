@@ -1,6 +1,6 @@
 package timedelayqueue;
 
-import java.security.Timestamp;
+import java.sql.Timestamp;
 import java.util.*;
 
 // TODO: write a description for this class
@@ -15,7 +15,7 @@ public class TimeDelayQueue {
 
     private final int delay;
 
-    private Queue<TimestampedObject> queue;
+    private Queue<PubSubMessage> queue;
 
     private List<Timestamp> history;
 
@@ -34,7 +34,7 @@ public class TimeDelayQueue {
      */
     public TimeDelayQueue(int delay) {
         this.delay = delay;
-        queue = new PriorityQueue<>();
+        queue = new PriorityQueue<>(new PubSubMessageComparator());
         history = new ArrayList<>();
         totalMsgCount = 0L;
     }
@@ -43,7 +43,18 @@ public class TimeDelayQueue {
     // if a message with the same id exists then
     // return false
     public boolean add(PubSubMessage msg) {
-        return false;
+        //add operation to history
+        Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+        history.add(currentTime);
+
+        if(queue.contains(msg)) {
+            return false;
+        }else{
+            queue.offer(msg);
+            totalMsgCount++;
+
+            return true;
+        }
     }
 
     /**
@@ -52,13 +63,37 @@ public class TimeDelayQueue {
      * @return
      */
     public long getTotalMsgCount() {
-        return -1;
+        return totalMsgCount;
     }
 
     // return the next message and PubSubMessage.NO_MSG
     // if there is ni suitable message
     public PubSubMessage getNext() {
-        return PubSubMessage.NO_MSG;
+        //add operation to history
+        Timestamp currentTime = new Timestamp(System.currentTimeMillis());
+        history.add(currentTime);
+
+        //poll next message
+        PubSubMessage next = queue.poll();
+
+        while(next != null && isExpired(next)){//removes expired message and get the next one
+            next = queue.poll();
+        }
+
+        //no message left in the queue
+        if(next == null){
+            return PubSubMessage.NO_MSG;
+        }
+
+        //check if the message has been delayed for long enough
+        long timeStamp = next.getTimestamp().getTime();
+        long now = currentTime.getTime();
+
+        if(now - timeStamp > delay){
+            return next;
+        }else{
+            return PubSubMessage.NO_MSG;
+        }
     }
 
     // return the maximum number of operations
@@ -66,7 +101,31 @@ public class TimeDelayQueue {
     // any window of length timeWindow
     // the operations of interest are add and getNext
     public int getPeakLoad(int timeWindow) {
+
         return -1;
+    }
+
+    //helper//
+
+    /**
+     * check if a message is expired
+     * @param m a PubSubMessage
+     * @return true if m is a TransientPubSubMessage, false otherwise
+     */
+    private boolean isExpired(PubSubMessage m){
+        if (!m.isTransient()){
+            return false;
+        }else {
+            int lifeTime = ((TransientPubSubMessage) m).getLifetime();
+            long timeStamp = m.getTimestamp().getTime();
+            long now = new Timestamp(System.currentTimeMillis()).getTime();
+
+            if(timeStamp + lifeTime < now){
+                return true;
+            }else{
+                return false;
+            }
+        }
     }
 
 }
