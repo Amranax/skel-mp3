@@ -79,7 +79,7 @@ public class TimeDelayQueue {
                 return PubSubMessage.NO_MSG;
             }
 
-            if ((next.getTimestamp().getTime() + delay) >= now.getTime()){
+            if ((next.getTimestamp().getTime() + delay) <= now.getTime()){
                 queue.remove(next);
                 history.add(now);
                 return next;
@@ -120,7 +120,7 @@ public class TimeDelayQueue {
         queue.forEach(msg -> {
             if (msg.isTransient()) {
                 long expireTime = msg.getTimestamp().getTime() + ((TransientPubSubMessage) msg).getLifetime();
-                if (expireTime > now.getTime()){
+                if (expireTime < now.getTime()){
                     toBeRemoved.add(msg);
                 }
             }
